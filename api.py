@@ -7,10 +7,10 @@ from django.db import IntegrityError
 from django.contrib.auth.models import User
 from django.utils.decorators import method_decorator
 
-from ios_notifications.models import Device
-from ios_notifications.forms import DeviceForm
-from ios_notifications.decorators import api_authentication_required
-from ios_notifications.http import HttpResponseNotImplemented, JSONResponse
+from apns.models import Device
+from apns.forms import DeviceForm
+from apns.decorators import api_authentication_required
+from apns.http import HttpResponseNotImplemented, JSONResponse
 
 
 class BaseResource(object):
@@ -36,7 +36,7 @@ class BaseResource(object):
 
 class DeviceResource(BaseResource):
     """
-    The API resource for ios_notifications.models.Device.
+    The API resource for apns.models.Device.
 
     Allowed HTTP methods are GET, POST and PUT.
     """

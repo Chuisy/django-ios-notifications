@@ -13,10 +13,10 @@ from django.http import HttpResponseNotAllowed
 from django.conf import settings
 from django.core import management
 
-from ios_notifications.models import APNService, Device, Notification, NotificationPayloadSizeExceeded
-from ios_notifications.http import JSONResponse
-from ios_notifications.utils import generate_cert_and_pkey
-from ios_notifications.forms import APNServiceForm
+from apns.models import APNService, Device, Notification, NotificationPayloadSizeExceeded
+from apns.http import JSONResponse
+from apns.utils import generate_cert_and_pkey
+from apns.forms import APNServiceForm
 
 TOKEN = '0fd12510cfe6b0a4a89dc7369c96df956f991e66131dab63398734e8000d0029'
 TEST_PEM = os.path.abspath(os.path.join(os.path.dirname(__file__), 'test.pem'))
@@ -82,8 +82,8 @@ class APITest(TestCase):
         self.service = APNService.objects.create(name='sandbox', hostname='gateway.sandbox.push.apple.com')
         self.device_token = TOKEN
         self.user = User.objects.create(username='testuser', email='test@example.com')
-        self.AUTH = getattr(settings, 'IOS_NOTIFICATIONS_AUTHENTICATION', 'NotSpecified')
-        setattr(settings, 'IOS_NOTIFICATIONS_AUTHENTICATION', 'AuthNone')
+        self.AUTH = getattr(settings, 'APNS_AUTHENTICATION', 'NotSpecified')
+        setattr(settings, 'APNS_AUTHENTICATION', 'AuthNone')
         self.device = Device.objects.create(service=self.service, token='0fd12510cfe6b0a4a89dc7369d96df956f991e66131dab63398734e8000d0029')
 
     def test_register_device_invalid_params(self):
@@ -112,7 +112,7 @@ class APITest(TestCase):
         self.assertTrue(isinstance(resp, JSONResponse))
         content = resp.content
         device_json = json.loads(content)
-        self.assertEqual(device_json.get('model'), 'ios_notifications.device')
+        self.assertEqual(device_json.get('model'), 'apns.device')
 
     def test_disallowed_method(self):
         resp = self.client.delete(reverse('ios-notifications-device-create'))
@@ -137,13 +137,13 @@ class APITest(TestCase):
         self.assertEqual(resp.status_code, 200)
         content = resp.content
         device_json = json.loads(content)
-        self.assertEqual(device_json.get('model'), 'ios_notifications.device')
+        self.assertEqual(device_json.get('model'), 'apns.device')
 
     def tearDown(self):
         if self.AUTH == 'NotSpecified':
-            del settings.IOS_NOTIFICATIONS_AUTHENTICATION
+            del settings.APNS_AUTHENTICATION
         else:
-            setattr(settings, 'IOS_NOTIFICATIONS_AUTHENTICATION', self.AUTH)
+            setattr(settings, 'APNS_AUTHENTICATION', self.AUTH)
 
 
 class AuthenticationDecoratorTestAuthBasic(TestCase):
@@ -156,12 +156,12 @@ class AuthenticationDecoratorTestAuthBasic(TestCase):
         self.user.is_staff = True
         self.user.save()
 
-        self.AUTH = getattr(settings, 'IOS_NOTIFICATIONS_AUTHENTICATION', 'NotSpecified')
-        setattr(settings, 'IOS_NOTIFICATIONS_AUTHENTICATION', 'AuthBasic')
+        self.AUTH = getattr(settings, 'APNS_AUTHENTICATION', 'NotSpecified')
+        setattr(settings, 'APNS_AUTHENTICATION', 'AuthBasic')
         self.device = Device.objects.create(service=self.service, token='0fd12510cfe6b0a4a89dc7369d96df956f991e66131dab63398734e8000d0029')
 
     def test_basic_authorization_request(self):
-        setattr(settings, 'IOS_NOTIFICATIONS_AUTHENTICATION', 'AuthBasic')
+        setattr(settings, 'APNS_AUTHENTICATION', 'AuthBasic')
         kwargs = {'token': self.device.token, 'service__id': self.device.service.id}
         url = reverse('ios-notifications-device', kwargs=kwargs)
         user_pass = '%s:%s' % (self.user.username, self.user_password)
@@ -170,7 +170,7 @@ class AuthenticationDecoratorTestAuthBasic(TestCase):
         self.assertEquals(resp.status_code, 200)
 
     def test_basic_authorization_request_invalid_credentials(self):
-        setattr(settings, 'IOS_NOTIFICATIONS_AUTHENTICATION', 'AuthBasic')
+        setattr(settings, 'APNS_AUTHENTICATION', 'AuthBasic')
         user_pass = '%s:%s' % (self.user.username, 'invalidpassword')
         auth_header = 'Basic %s' % user_pass.encode('base64')
         url = reverse('ios-notifications-device-create')
@@ -179,20 +179,20 @@ class AuthenticationDecoratorTestAuthBasic(TestCase):
         self.assertTrue('authentication error' in resp.content)
 
     def test_basic_authorization_missing_header(self):
-        setattr(settings, 'IOS_NOTIFICATIONS_AUTHENTICATION', 'AuthBasic')
+        setattr(settings, 'APNS_AUTHENTICATION', 'AuthBasic')
         url = reverse('ios-notifications-device-create')
         resp = self.client.get(url)
         self.assertEquals(resp.status_code, 401)
         self.assertTrue('Authorization header not set' in resp.content)
 
     def test_invalid_authentication_type(self):
-        from ios_notifications.decorators import InvalidAuthenticationType
-        setattr(settings, 'IOS_NOTIFICATIONS_AUTHENTICATION', 'AuthDoesNotExist')
+        from apns.decorators import InvalidAuthenticationType
+        setattr(settings, 'APNS_AUTHENTICATION', 'AuthDoesNotExist')
         url = reverse('ios-notifications-device-create')
         self.assertRaises(InvalidAuthenticationType, self.client.get, url)
 
     def test_basic_authorization_is_staff(self):
-        setattr(settings, 'IOS_NOTIFICATIONS_AUTHENTICATION', 'AuthBasicIsStaff')
+        setattr(settings, 'APNS_AUTHENTICATION', 'AuthBasicIsStaff')
         kwargs = {'token': self.device.token, 'service__id': self.device.service.id}
         url = reverse('ios-notifications-device', kwargs=kwargs)
         user_pass = '%s:%s' % (self.user.username, self.user_password)
@@ -202,7 +202,7 @@ class AuthenticationDecoratorTestAuthBasic(TestCase):
         self.assertEquals(resp.status_code, 200)
 
     def test_basic_authorization_is_staff_with_non_staff_user(self):
-        setattr(settings, 'IOS_NOTIFICATIONS_AUTHENTICATION', 'AuthBasicIsStaff')
+        setattr(settings, 'APNS_AUTHENTICATION', 'AuthBasicIsStaff')
         kwargs = {'token': self.device.token, 'service__id': self.device.service.id}
         url = reverse('ios-notifications-device', kwargs=kwargs)
         user_pass = '%s:%s' % (self.user.username, self.user_password)
@@ -215,9 +215,9 @@ class AuthenticationDecoratorTestAuthBasic(TestCase):
 
     def tearDown(self):
         if self.AUTH == 'NotSpecified':
-            del settings.IOS_NOTIFICATIONS_AUTHENTICATION
+            del settings.APNS_AUTHENTICATION
         else:
-            setattr(settings, 'IOS_NOTIFICATIONS_AUTHENTICATION', self.AUTH)
+            setattr(settings, 'APNS_AUTHENTICATION', self.AUTH)
 
 
 class NotificationTest(TestCase):

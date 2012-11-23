@@ -1,5 +1,5 @@
 from django.contrib.auth import authenticate
-from ios_notifications.http import JSONResponse
+from apns.http import JSONResponse
 from django.conf import settings
 import binascii
 
@@ -14,13 +14,13 @@ VALID_AUTH_TYPES = ('AuthBasic', 'AuthBasicIsStaff', 'AuthNone')
 
 def api_authentication_required(func):
     """
-    Check the value of IOS_NOTIFICATIONS_AUTHENTICATION in settings
+    Check the value of APNS_AUTHENTICATION in settings
     and authenticate the request user appropriately.
     """
     def wrapper(request, *args, **kwargs):
-        AUTH_TYPE = getattr(settings, 'IOS_NOTIFICATIONS_AUTHENTICATION', None)
+        AUTH_TYPE = getattr(settings, 'APNS_AUTHENTICATION', None)
         if AUTH_TYPE is None or AUTH_TYPE not in VALID_AUTH_TYPES:
-            raise InvalidAuthenticationType('IOS_NOTIFICATIONS_AUTHENTICATION must be specified in your settings.py file.\
+            raise InvalidAuthenticationType('APNS_AUTHENTICATION must be specified in your settings.py file.\
                     Valid options are "AuthBasic", "AuthBasicIsStaff" or "AuthNone"')
         # Basic Authorization
         elif AUTH_TYPE == 'AuthBasic' or AUTH_TYPE == 'AuthBasicIsStaff':

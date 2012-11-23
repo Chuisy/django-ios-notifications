@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from django.contrib import admin
-from ios_notifications.models import Device, Notification, APNService, FeedbackService
-from ios_notifications.forms import APNServiceForm
+from apns.models import Device, Notification, APNService, FeedbackService
+from apns.forms import APNServiceForm
 from django.conf.urls.defaults import patterns, url
 from django.template.response import TemplateResponse
 from django.shortcuts import get_object_or_404
@@ -40,9 +40,9 @@ class NotificationAdmin(admin.ModelAdmin):
             service = notification.service
             num_devices = service.device_set.filter(is_active=True).count()
             notification.service.push_notification_to_devices(notification)
-        return TemplateResponse(request, 'admin/ios_notifications/notification/push_notification.html',
+        return TemplateResponse(request, 'admin/apns/notification/push_notification.html',
                                 {'notification': notification, 'num_devices': num_devices, 'sent': request.method == 'POST'},
-                                current_app='ios_notifications')
+                                current_app='apns')
 
 admin.site.register(Device, DeviceAdmin)
 admin.site.register(Notification, NotificationAdmin)

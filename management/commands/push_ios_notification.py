@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from django.core.management.base import BaseCommand, CommandError
-from ios_notifications.models import Notification, APNService
+from apns.models import Notification, APNService
 from optparse import make_option
 
 # TODO: argparse for Python 2.7

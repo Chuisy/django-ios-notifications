@@ -4,7 +4,7 @@ from django import forms
 from django.forms.widgets import PasswordInput
 
 import OpenSSL
-from ios_notifications.models import Device, APNService
+from apns.models import Device, APNService
 
 
 class DeviceForm(forms.ModelForm):
