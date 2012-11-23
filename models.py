@@ -102,7 +102,7 @@ class APNService(BaseService):
         """
         return super(APNService, self).connect(self.certificate, self.private_key, self.passphrase)
 
-    def push_notification_to_devices(self, notification, devices=None):
+    def push_notification_to_devices(self, notification, devices=None, additional_data=None):
         """
         Sends the specific notification to devices.
         if `devices` is not supplied, all devices in the `APNService`'s device
@@ -111,10 +111,10 @@ class APNService(BaseService):
         if devices is None:
             devices = self.device_set.filter(is_active=True)
         if self.connect():
-            self._write_message(notification, devices)
+            self._write_message(notification, devices, additional_data)
             self.disconnect()
 
-    def _write_message(self, notification, devices):
+    def _write_message(self, notification, devices, additional_data=None):
         """
         Writes the message for the supplied devices to
         the APN Service SSL socket.
@@ -126,7 +126,7 @@ class APNService(BaseService):
             if not self.connect():
                 return
 
-        payload = self.get_payload(notification)
+        payload = self.get_payload(notification, additional_data)
 
         for device in devices:
             try:
@@ -147,7 +147,7 @@ class APNService(BaseService):
         notification.last_sent_at = datetime.datetime.now()
         notification.save()
 
-    def get_payload(self, notification):
+    def get_payload(self, notification, additional_data=None):
         aps = {'alert': notification.message}
         if notification.badge is not None:
             aps['badge'] = notification.badge
@@ -155,6 +155,10 @@ class APNService(BaseService):
             aps['sound'] = notification.sound
 
         message = {'aps': aps}
+
+        if additional_data:
+            message.update(additional_data)
+
         payload = json.dumps(message, separators=(',', ':'))
 
         if len(payload) > 256:
@@ -234,7 +238,7 @@ class Device(models.Model):
     display = models.CharField(max_length=30, blank=True, null=True)
     os_version = models.CharField(max_length=20, blank=True, null=True)
 
-    def push_notification(self, notification):
+    def push_notification(self, notification, additional_data=None):
         """
         Pushes a ios_notifications.models.Notification instance to an the device.
         For more details see http://developer.apple.com/library/mac/#documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/ApplePushService/ApplePushService.html
@@ -242,7 +246,7 @@ class Device(models.Model):
         if not isinstance(notification, Notification):
             raise TypeError('notification should be an instance of ios_notifications.models.Notification')
 
-        notification.service.push_notification_to_devices(notification, [self])
+        notification.service.push_notification_to_devices(notification, [self], additional_data)
         self.save()
 
     def __unicode__(self):
